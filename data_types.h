@@ -7,7 +7,20 @@ using triple = std::tuple<T1, T2, T3>;
 
 typedef struct{
     std::tuple<int, double, double> level;
+
+    int side(){
+        return std::get<0>(level);
+    };
+
+    int price(){
+        return std::get<1>(level);
+    };
+
+    int size(){
+        return std::get<2>(level);
+    };
 } raw_level;
+
 
 typedef struct {
     long long asset_id;
@@ -27,7 +40,7 @@ typedef struct{
     long long market_id;
     long timestamp;
     raw_level levels[];
-} BookMessage;
+} book_message;
 
 typedef struct{
     long timestamp;
