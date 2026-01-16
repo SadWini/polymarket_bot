@@ -9,7 +9,9 @@ find_package(Boost REQUIRED CONFIG COMPONENTS system thread)
 find_package(nlohmann_json REQUIRED)
 
 add_executable(polymarket_bot main.cpp
-        orderbook.h)
+        orderbook.h
+        polymarket_client.h
+)
 
 target_link_libraries(polymarket_bot
     PRIVATE
