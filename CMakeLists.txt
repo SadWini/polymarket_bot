@@ -14,7 +14,9 @@ include_directories(include)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 add_executable(poly_bot ${SOURCES}
-        include/core/types.h)
+        include/core/types.h
+        "include/feed /feed_client.h"
+        src/feed/poly_feed.cpp)
 
 target_link_libraries(poly_bot
     PRIVATE
