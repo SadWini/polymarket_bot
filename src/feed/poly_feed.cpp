@@ -18,7 +18,7 @@ using json = nlohmann::json;
 namespace poly {
     class PolyFeed : public IFeedClient {
         net::io_context& ioc_;
-        ssl::context& ctx_{ssl::context::tlsv12_client};
+        ssl::context ctx_{ssl::context::tlsv12_client};
         websocket::stream<beast::ssl_stream<tcp::socket>> ws_;
         EventCallback callback_;
         std::string host_ = "wss://ws-subscriptions-clob.polymarket.com/ws/market";

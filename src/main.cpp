@@ -26,6 +26,23 @@ public:
 };
 
 int main() {
+    boost::asio::io_context ioc;
+    CsvLogger logger("market_data.log");
+    poly::PolyFeed poly_feed(ioc);
+    poly_feed.set_calback([&logger](const poly::MarketEvent& evt)
+    {
+        logger.log(evt);
+        std::cout << "[TRADE]" << evt.price << " (" << evt.size << ")" << std::endl;
+    });
 
+    try {
+        poly_feed.connect();
+        std::string active_asset_id = "111938262309312181451460904134500914401044285052974058660940444425309393359260";
+        poly_feed.subscribe(active_asset_id);
+
+        ioc.run();
+    } catch (const std::exception& e) {
+        std::cerr << "Fata error" << e.what() << std::endl;
+    }
     return 0;
 }
