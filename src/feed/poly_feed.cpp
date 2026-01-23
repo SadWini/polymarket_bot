@@ -21,9 +21,36 @@ namespace poly {
         ssl::context ctx_{ssl::context::tlsv12_client};
         websocket::stream<beast::ssl_stream<tcp::socket>> ws_;
         EventCallback callback_;
-        std::string host_ = "wss://ws-subscriptions-clob.polymarket.com";
+        std::string host_ = "ws-subscriptions-clob.polymarket.com";
         std::string path_ = "/ws/market";
         std::string port_ = "443";
+
+        void process_item(const json& item) {
+            if (!item.contains("event_type")) return;
+            if (item["event_type"] == "last_trade_price") {
+                MarketEvent evt;
+                evt.venue = Venue::POLYMARKET;
+                evt.symbol = item.value("asset_id", "unknown");
+                try {
+                    auto p_str = item.value("price", "0");
+                    evt.price = std::stod(p_str);
+
+                    auto s_str = item.value("size", "0");
+                    evt.size = std::stod(s_str);
+                    std::string ts_str = item.value("timestamp_exch", "0");
+                    evt.timestamp_exch = std::stoull(ts_str);
+                } catch (...) {
+                    spdlog::warn("Error converting numbers for event: {}", item.dump());
+                    return;
+                }
+
+                evt.timestamp_recv = now_ms();
+                evt.side = (item.value("side", "") == "BUY") ? Side::BUY : Side::SELL;
+                evt.original_payload = item.dump();
+
+                if (callback_) callback_(evt);
+            }
+        }
 
     public:
         PolyFeed(net::io_context& ioc) : ioc_(ioc), ws_(net::make_strand(ioc), ctx_) {}
@@ -55,12 +82,12 @@ namespace poly {
         }
 
         void subscribe(const std::string& token_id) override {
-            json sub_msg = {
-                {"type", "market"},
-                {"assets", {token_id}}
-            };
+            nlohmann::ordered_json sub_msg;
+            sub_msg["type"] = "market";
+            sub_msg["assets_ids"] = {token_id};
+            std::string payload = sub_msg.dump();
             ws_.write(net::buffer(sub_msg.dump()));
-            spdlog::info("Subscribed to asset: {}", token_id);
+            spdlog::info("WS SEND: {}", payload);
         }
 
         void run() override {}
@@ -89,24 +116,22 @@ namespace poly {
         }
 
         void parse_message(const std::string& raw_json) {
-            auto j = json::parse(raw_json);
+            try {
+                auto j = json::parse(raw_json);
 
-            if (j.is_array()) {
-                for (const auto& item : j) {
-                    if (item.contains("event_type") && item["event_type"] == "last_trade_price") {
-                        MarketEvent evt;
-                        evt.venue = Venue::POLYMARKET;
-                        evt.symbol = item.value("asset_id", "unknown");
-                        evt.price = std::stod(item.value("price", "0"));
-                        evt.size = std::stod(item.value("size", "0"));
-                        evt.timestamp_exch = item.value("timestamp", 0ULL);
-                        evt.timestamp_recv = now_ms();
-                        evt.side = (item.value("side", "") == "BUY") ? Side::BUY : Side::SELL;
-                        evt.original_payload = raw_json;
-
-                        if (callback_) callback_(evt);
+                if (j.is_array()) {
+                    for (const auto& item : j) {
+                        process_item(item);
+                    }
+                } else if (j.is_object()) {
+                    if (j.contains("type") && j["type"] == "error") {
+                        spdlog::error("API Error: {}", raw_json);
+                    } else {
+                        process_item(j);
                     }
                 }
+            } catch (const std::exception& e) {
+                spdlog::error("JSON Parse error: {} | Payload: {}", e.what(), raw_json);
             }
         }
     };
