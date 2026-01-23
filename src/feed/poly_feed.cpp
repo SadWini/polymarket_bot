@@ -21,7 +21,9 @@ namespace poly {
         ssl::context ctx_{ssl::context::tlsv12_client};
         websocket::stream<beast::ssl_stream<tcp::socket>> ws_;
         EventCallback callback_;
-        std::string host_ = "wss://ws-subscriptions-clob.polymarket.com/ws/market";
+        std::string host_ = "wss://ws-subscriptions-clob.polymarket.com";
+        std::string path_ = "/ws/market";
+        std::string port_ = "443";
 
     public:
         PolyFeed(net::io_context& ioc) : ioc_(ioc), ws_(net::make_strand(ioc), ctx_) {}
@@ -32,11 +34,20 @@ namespace poly {
 
         void connect() override {
             tcp::resolver resolver(ioc_);
-            auto const results = resolver.resolve(host_, "443");
+            auto const results = resolver.resolve(host_, port_);
 
             net::connect(beast::get_lowest_layer(ws_), results);
+
+            if (!SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str())){
+                throw boost::system::system_error(
+                    static_cast<int>(::ERR_get_error()),
+                    boost::asio::error::get_ssl_category());
+            }
+
+            ws_.next_layer().set_verify_mode(ssl::verify_none);
+
             ws_.next_layer().handshake(ssl::stream_base::client);
-            ws_.handshake(host_, "/");
+            ws_.handshake(host_, path_);
 
             spdlog::info("connected");
 
