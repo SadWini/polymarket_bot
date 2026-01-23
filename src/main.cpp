@@ -15,7 +15,7 @@ public:
     void log(const poly::MarketEvent& evt) {
         std::lock_guard<std::mutex> lock(mtx_);
         file_ << evt.timestamp_recv << ","
-            << evt.timestamp_recv << ","
+            << evt.timestamp_exch << ","
             << (evt.venue == poly::Venue::POLYMARKET ? "POLY" : "BINANCE") << ","
             << evt.symbol << ","
             << evt.price << ","
