@@ -20,8 +20,11 @@ public:
             << evt.symbol << ","
             << evt.price << ","
             << evt.size << ","
-            << (evt.side == poly::Side::BUY ? "BUY" : "SELL") << "\n"
-            << std::flush;
+            << (evt.side == poly::Side::BUY ? "BUY" : "SELL") << "\n";
+    }
+
+    ~CsvLogger() {
+        if (file_.is_open()) file_.flush();
     }
 };
 
@@ -37,7 +40,7 @@ int main() {
 
     try {
         poly_feed.connect();
-        std::string active_asset_id = "111938262309312181451460904134500914401044285052974058660940444425309393359260";
+        std::string active_asset_id = "59719719039631756307294555041448841356874460815999568684148949988502358821254";
         poly_feed.subscribe(active_asset_id);
 
         ioc.run();
