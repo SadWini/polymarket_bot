@@ -1,4 +1,5 @@
 #include "feed/poly_feed.cpp"
+#include "feed/binance_feed.cpp"
 #include "core/types.hpp"
 #include <iostream>
 #include <fstream>
@@ -37,12 +38,18 @@ int main() {
         logger.log(evt);
         std::cout << "[TRADE]" << evt.price << " (" << evt.size << ")" << std::endl;
     });
+    auto binance_feed = std::make_shared<poly::BinanceFeed>(ioc);
+    binance_feed->set_calback([&logger](const poly::MarketEvent& evt)
+    {
+        logger.log(evt);
+        std::cout << "[TRADE]" << evt.price << " (" << evt.size << ")" << std::endl;
+    });
 
     try {
         poly_feed->connect();
         std::string active_asset_id = "27801427116870763425813473135293780501482981171413880573576379343739069284230";
         poly_feed->subscribe(active_asset_id);
-
+        binance_feed->connect();
         ioc.run();
     } catch (const std::exception& e) {
         std::cerr << "Fata error" << e.what() << std::endl;
