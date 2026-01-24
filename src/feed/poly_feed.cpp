@@ -1,4 +1,5 @@
 #include "feed /feed_client.h"
+#include "core/orderbook.hpp"
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/websocket.hpp>
@@ -36,6 +37,8 @@ namespace poly {
         bool is_closing_ = false;
 
         EventCallback callback_;
+
+        Orderbook book_;
     public:
         PolyFeed(net::io_context& ioc) : ioc_(ioc),
         resolver_(net::make_strand(ioc)),
@@ -185,7 +188,11 @@ namespace poly {
 
         void process_item(const json& item) {
             if (!item.contains("event_type")) return;
-            if (item["event_type"] == "last_trade_price") {
+            std::string type = item["event_type"];
+            if (type == "book") {
+                process_book(item); return;
+            }
+            if (type ==  "last_trade_price") {
                 MarketEvent evt;
                 evt.venue = Venue::POLYMARKET;
                 evt.symbol = item.value("asset_id", "unknown");
@@ -206,7 +213,30 @@ namespace poly {
                 evt.side = (item.value("side", "") == "BUY") ? Side::BUY : Side::SELL;
                 evt.original_payload = item.dump();
 
+                book_.get_state(evt.best_bid, evt.best_ask, evt.bid_depth, evt.ask_depth);
                 if (callback_) callback_(evt);
+            }
+        }
+
+        void process_book(const json& item) {
+            try {
+                if (item.contains("bids")) {
+                    for (const auto& level : item["bids"]) {
+                        double p = std::stod(level.value("price", "0"));
+                        double s = std::stod(level.value("size", "0"));
+                        book_.update(true, p, s);
+                    }
+                }
+
+                if (item.contains("asks")) {
+                    for (const auto& level : item["asks"]) {
+                        double p = std::stod(level.value("price", "0"));
+                        double s = std::stod(level.value("size", "0"));
+                        book_.update(false, p, s);
+                    }
+                }
+            } catch (...) {
+                spdlog::warn("Book parse error");
             }
         }
 
