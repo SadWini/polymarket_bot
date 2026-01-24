@@ -11,7 +11,7 @@ class CsvLogger {
 public:
     CsvLogger(const std::string& filename) {
         file_.open(filename);
-        file_ << "timestamp_recv,timestamp_exch,venue,symbol,price,size,side" << std::endl;
+        file_ << "timestamp_recv,timestamp_exch,venue,symbol,price,size,side, best_bid, best_asks, spread, mid_price" << std::endl;
     }
     void log(const poly::MarketEvent& evt) {
         std::lock_guard<std::mutex> lock(mtx_);
@@ -21,7 +21,13 @@ public:
             << evt.symbol << ","
             << evt.price << ","
             << evt.size << ","
-            << (evt.side == poly::Side::BUY ? "BUY" : "SELL") << "\n";
+            << (evt.side == poly::Side::BUY ? "BUY" : "SELL") << ","
+
+            << evt.best_bid << ","
+            << evt.best_ask << ","
+            << (evt.best_ask - evt.best_bid) << ","
+            << (evt.best_ask + evt.best_bid) / 2.0
+            << "\n";
     }
 
     ~CsvLogger() {
