@@ -28,7 +28,7 @@ namespace poly {
         double best_bid = 0.0;
         double best_ask = 1.0;
         double bid_depth = 0.0;
-        double bid_asks = 0.0;
+        double ask_depth = 0.0;
 
         std::string original_payload;
     };
