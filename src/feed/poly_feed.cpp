@@ -37,7 +37,7 @@ namespace poly {
 
                     auto s_str = item.value("size", "0");
                     evt.size = std::stod(s_str);
-                    std::string ts_str = item.value("timestamp_exch", "0");
+                    std::string ts_str = item.value("timestamp", "0");
                     evt.timestamp_exch = std::stoull(ts_str);
                 } catch (...) {
                     spdlog::warn("Error converting numbers for event: {}", item.dump());
