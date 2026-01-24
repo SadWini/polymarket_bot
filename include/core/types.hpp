@@ -26,7 +26,7 @@ namespace poly {
         Side side;
 
         double best_bid = 0.0;
-        double best_asks = 1.0;
+        double best_ask = 1.0;
         double bid_depth = 0.0;
         double bid_asks = 0.0;
 
