@@ -8,6 +8,9 @@
 #include <spdlog/spdlog.h>
 #include <iostream>
 
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace websocket = beast::websocket;
@@ -38,8 +41,9 @@ namespace poly {
         resolver_(net::make_strand(ioc)),
         ws_(net::make_strand(ioc), ctx_),
         reconnect_timer_(ioc) {
-            ws_.set_option(websocket::stream_base::timeout::suggested(beast::role_type::client));
+            ws_.next_layer().set_verify_mode(ssl::verify_none);
 
+            ws_.set_option(websocket::stream_base::timeout::suggested(beast::role_type::client));
             ws_.set_option(websocket::stream_base::decorator(
                 [](websocket::request_type& req)
                 {
@@ -90,8 +94,15 @@ namespace poly {
             if (ec) return fail(ec, "connect");
 
             beast::get_lowest_layer(ws_).expires_never();
-            if (SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str())) {
-                ec = beast::error_code(static_cast<int>(::ERR_get_error()), net::error::get_ssl_category());
+            auto ssl_handle = ws_.next_layer().native_handle();
+            if (!ssl_handle) {
+                return fail(beast::error_code(net::error::no_memory), "ssl_handle_null");
+            }
+
+            if (!SSL_set_tlsext_host_name(ssl_handle, host_.c_str())) {
+                int err = ::ERR_get_error();
+                ec = (err != 0) ? beast::error_code(err, net::error::get_ssl_category())
+                    : beast::error_code(net::error::invalid_argument);
                 return fail(ec, "ssl_sni");
             }
 
