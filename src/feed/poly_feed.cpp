@@ -38,7 +38,7 @@ namespace poly {
 
         EventCallback callback_;
 
-        Orderbook book_;
+        std::unordered_map<std::string, Orderbook> books_;
     public:
         PolyFeed(net::io_context& ioc) : ioc_(ioc),
         resolver_(net::make_strand(ioc)),
@@ -192,6 +192,9 @@ namespace poly {
             if (type == "book") {
                 process_book(item); return;
             }
+            if (type == "price_change") {
+                process_price_change(item); return;
+            }
             if (type ==  "last_trade_price") {
                 MarketEvent evt;
                 evt.venue = Venue::POLYMARKET;
@@ -213,18 +216,19 @@ namespace poly {
                 evt.side = (item.value("side", "") == "BUY") ? Side::BUY : Side::SELL;
                 evt.original_payload = item.dump();
 
-                book_.get_state(evt.best_bid, evt.best_ask, evt.bid_depth, evt.ask_depth);
+                books_[evt.symbol].get_state(evt.best_bid, evt.best_ask, evt.bid_depth, evt.ask_depth);
                 if (callback_) callback_(evt);
             }
         }
 
         void process_book(const json& item) {
             try {
+                std::string asset = item["asset_id"];
                 if (item.contains("bids")) {
                     for (const auto& level : item["bids"]) {
                         double p = std::stod(level.value("price", "0"));
                         double s = std::stod(level.value("size", "0"));
-                        book_.update(true, p, s);
+                        books_[asset].update(true, p, s);
                     }
                 }
 
@@ -232,11 +236,26 @@ namespace poly {
                     for (const auto& level : item["asks"]) {
                         double p = std::stod(level.value("price", "0"));
                         double s = std::stod(level.value("size", "0"));
-                        book_.update(false, p, s);
+                        books_[asset].update(false, p, s);
                     }
                 }
             } catch (...) {
                 spdlog::warn("Book parse error");
+            }
+        }
+
+        void process_price_change(const json& item) {
+            double price, size;
+            std::string asset;
+            try {
+                for (auto& chg : item["price_changes"]) {
+                    asset = chg["asset_id"];
+                    price = std::stod(chg.value("price", "0"));
+                    size = std::stod(chg.value("size", "0"));
+                    books_[asset].update(chg["side"] == "BUY", price, size);
+                }
+            } catch (...) {
+                spdlog::warn("Book update parse error");
             }
         }
 
