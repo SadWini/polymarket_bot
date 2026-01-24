@@ -40,7 +40,7 @@ namespace poly {
             if (asks_.empty()) {best_ask = 0; bid_depth = 0;}
             else {
                 best_ask = asks_.begin()->first;
-                bid_depth = asks_.begin()->second;
+                ask_depth = asks_.begin()->second;
             }
 
         }
