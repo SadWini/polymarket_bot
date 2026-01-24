@@ -10,7 +10,7 @@ class CsvLogger {
 public:
     CsvLogger(const std::string& filename) {
         file_.open(filename);
-        file_ << "timestamp_recv,timestamp_exch,venue,symbol,price,size,side";
+        file_ << "timestamp_recv,timestamp_exch,venue,symbol,price,size,side" << std::endl;
     }
     void log(const poly::MarketEvent& evt) {
         std::lock_guard<std::mutex> lock(mtx_);
@@ -31,17 +31,17 @@ public:
 int main() {
     boost::asio::io_context ioc;
     CsvLogger logger("market_data.log");
-    poly::PolyFeed poly_feed(ioc);
-    poly_feed.set_calback([&logger](const poly::MarketEvent& evt)
+    auto poly_feed = std::make_shared<poly::PolyFeed>(ioc);
+    poly_feed->set_calback([&logger](const poly::MarketEvent& evt)
     {
         logger.log(evt);
         std::cout << "[TRADE]" << evt.price << " (" << evt.size << ")" << std::endl;
     });
 
     try {
-        poly_feed.connect();
-        std::string active_asset_id = "59719719039631756307294555041448841356874460815999568684148949988502358821254";
-        poly_feed.subscribe(active_asset_id);
+        poly_feed->connect();
+        std::string active_asset_id = "27801427116870763425813473135293780501482981171413880573576379343739069284230";
+        poly_feed->subscribe(active_asset_id);
 
         ioc.run();
     } catch (const std::exception& e) {
