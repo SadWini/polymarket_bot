@@ -16,7 +16,9 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_executable(poly_bot ${SOURCES}
         include/core/types.hpp
         "include/feed /feed_client.h"
-        src/feed/poly_feed.cpp)
+        src/feed/poly_feed.cpp
+        src/feed/binance_feed.cpp
+        include/core/orderbook.hpp)
 
 target_link_libraries(poly_bot
     PRIVATE
